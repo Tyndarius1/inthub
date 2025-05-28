@@ -26,13 +26,15 @@ class Student extends Authenticatable
         'student_pic',
         'otp',               
         'otp_expires_at',    
-        'is_verified',     
+        'is_verified',
+        'reset_token',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
-        'otp'
+        'otp',
+        'reset_token',
     ];
 
     protected $casts = [

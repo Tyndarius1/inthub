@@ -24,13 +24,15 @@ class Employer extends Authenticatable
         'company_pic',
         'otp',              
         'otp_expires_at',   
-        'is_verified',  
+        'is_verified',
+        'reset_token',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
         'otp',
+        'reset_token',
     ];
 
     protected $casts = [

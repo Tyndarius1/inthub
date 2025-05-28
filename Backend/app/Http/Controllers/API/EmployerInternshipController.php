@@ -10,27 +10,19 @@ use App\Services\SmsService;
 
 class EmployerInternshipController extends Controller
 {
-// List all internships of the authenticated employer
-public function index(Request $request)
+
+public function index()
 {
-$employer = $request->user();
-
-// Get all internships owned by the employer
-$internshipIds = $employer->internships()->pluck('id');
-
-// Fetch all applications for these internships
-$applications = Application::with('student', 'internship')
-->whereIn('internship_id', $internshipIds)
+$internships = Internship::with('employer')
+->orderBy('created_at', 'desc')
 ->get();
 
 return response()->json([
-'applications' => $applications,
+'internships' => $internships,
 ]);
-
 }
 
 
-// Store a new internship
 public function store(Request $request)
 {
 $request->validate([
@@ -65,13 +57,13 @@ return response()->json([
 
 public function show(Request $request, $id)
 {
-    $employer = $request->user();
+$employer = $request->user();
 
-    $internship = Internship::with(['applications.student'])
-        ->where('employer_id', $employer->id)
-        ->findOrFail($id);
+$internship = Internship::with(['applications.student'])
+->where('employer_id', $employer->id)
+->findOrFail($id);
 
-    return response()->json($internship);
+return response()->json($internship);
 }
 
 
@@ -83,7 +75,7 @@ public function update(Request $request, $id)
 {
 $employer = $request->user();
 
-$internship = Internship::where('employer_id', $employer->id)->findOrFail($id);
+$internship = Internship::findOrFail($id);
 
 $request->validate([
 'title' => 'sometimes|string|max:255',
@@ -109,52 +101,52 @@ return response()->json([
 
 public function updateApplicationStatus(Request $request, $applicationId)
 {
-    $request->validate([
-        'status' => 'required|in:accepted,rejected',
-    ]);
+$request->validate([
+'status' => 'required|in:accepted,rejected',
+]);
 
-    $employer = $request->user();
+$employer = $request->user();
 
-    $application = \App\Models\Application::with('student', 'internship')->findOrFail($applicationId);
+$application = \App\Models\Application::with('student', 'internship')->findOrFail($applicationId);
 
-    // Ensure the employer owns the internship
-    if ($application->internship->employer_id !== $employer->id) {
-        return response()->json(['message' => 'Unauthorized'], 403);
-    }
+// Ensure the employer owns the internship
+if ($application->internship->employer_id !== $employer->id) {
+return response()->json(['message' => 'Unauthorized'], 403);
+}
 
-    // Prevent duplicate update
-    if ($application->status === $request->status) {
-        return response()->json([
-            'message' => 'Status is already set to "' . $request->status . '"',
-            'application' => $application
-        ], 200);
-    }
+// Prevent duplicate update
+if ($application->status === $request->status) {
+return response()->json([
+'message' => 'Status is already set to "' . $request->status . '"',
+'application' => $application
+], 200);
+}
 
-    $application->status = $request->status;
-    $application->save();
+$application->status = $request->status;
+$application->save();
 
-    // Compose SMS message
-    $student = $application->student;
-    $message = '';
 
-    if ($application->status === 'accepted') {
-        $message = "Hi {$student->name}, congratulations! You have been accepted for the internship: {$application->internship->title}.";
-    } else {
-        $message = "Hi {$student->name}, we regret to inform you that your application for the internship: {$application->internship->title} was not accepted.";
-    }
+$student = $application->student;
+$message = '';
 
-    // Send SMS
-    try {
-        $smsService = new SmsService();
-        $smsService->send($student->phone, $message);
-    } catch (\Exception $e) {
-        \Log::error("SMS sending failed: " . $e->getMessage());
-    }
+if ($application->status === 'accepted') {
+$message = "Hi {$student->name}, congratulations! You have been accepted for the internship: {$application->internship->title}.";
+} else {
+$message = "Hi {$student->name}, we regret to inform you that your application for the internship: {$application->internship->title} was not accepted.";
+}
 
-    return response()->json([
-        'message' => 'Application status updated successfully. SMS notification sent.',
-        'application' => $application
-    ]);
+
+try {
+$smsService = new SmsService();
+$smsService->send($student->phone, $message);
+} catch (\Exception $e) {
+\Log::error("SMS sending failed: " . $e->getMessage());
+}
+
+return response()->json([
+'message' => 'Application status updated successfully. SMS notification sent.',
+'application' => $application
+]);
 }
 
 
@@ -163,12 +155,11 @@ public function updateApplicationStatus(Request $request, $applicationId)
 
 
 
-// Delete internship (only if it belongs to employer)
 public function destroy(Request $request, $id)
 {
 $employer = $request->user();
 
-$internship = Internship::where('employer_id', $employer->id)->findOrFail($id);
+$internship = Internship::findOrFail($id);
 
 $internship->delete();
 
