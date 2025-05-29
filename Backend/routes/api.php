@@ -13,7 +13,11 @@ use App\Http\Controllers\API\StudentApplicationController;
 
 Route::prefix('admin')->group(function () {
 Route::post('/login', [AdminAuthController::class, 'login']);
+Route::get('/qr/login/{token}', [AdminAuthController::class, 'qrLogin'])->name('qr.login');
+
 });
+
+
 
 
 
@@ -74,4 +78,7 @@ Route::apiResource('internships', EmployerInternshipController::class);
 Route::post('/applications/{applicationId}/status', [EmployerInternshipController::class, 'updateApplicationStatus']);
 });
 
+Route::prefix('admin')->group(function () {
+   Route::post('/generate-qr-token', [AdminAuthController::class, 'generateQrToken']);
+});
 });

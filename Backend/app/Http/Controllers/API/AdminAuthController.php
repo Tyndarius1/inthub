@@ -5,7 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
-use Endroid\QrCode\QrCode; // Use Endroid QR code
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
@@ -36,10 +36,7 @@ class AdminAuthController extends Controller
         ]);
     }
 
-    
-
-
-     // Generate the QR Code for login
+    // Generate the QR Code for login
     public function generateQrToken(Request $request)
     {
         // Ensure the user is authenticated (only admins can generate QR tokens)
@@ -49,28 +46,37 @@ class AdminAuthController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Generate a unique token (could be a JWT or random token for simplicity)
+        // Check if the user already has an existing QR token
+        if ($user->login_token) {
+            // Optionally, allow user to delete the existing token and generate a new one
+            if ($request->has('regenerate') && $request->regenerate === 'true') {
+                // Delete the existing token and proceed to generate a new one
+                $user->update([
+                    'login_token' => null,
+                    'login_token_created_at' => null,  // Optionally clear the created_at field
+                ]);
+            } else {
+                return response()->json(['message' => 'A QR token already exists. Please use it or generate a new one.'], 400);
+            }
+        }
+
+        // Generate a new unique token (random string)
         $qrToken = Str::random(60);
 
-        // Save the token to the user model for future validation (you might want to store it)
+        // Save the token to the user model for future validation
         $user->update([
             'login_token' => $qrToken,
-            'login_token_created_at' => now(),
+            'login_token_created_at' => now(), // Optionally store the creation time
         ]);
 
         // Generate the URL for login via QR (this should match the route on the backend)
         $qrCodeUrl = route('qr.login', ['token' => $qrToken]);
 
-        // Create the QR code
-        $qrCode = new QrCode($qrCodeUrl);  // Pass the URL as the data to the QR code
-        $qrCode->setSize(300);  // Set the QR code size
-        $qrCode->setMargin(10);  // Optional: add a margin around the QR code
-
-        // Generate QR code image as PNG binary data
-        $qrCodeData = $qrCode->writeString();
+        // Generate QR code using SimpleQR
+        $qrCode = QrCode::format('png')->size(300)->generate($qrCodeUrl);
 
         // Convert to Base64 for embedding into HTML
-        $qrCodeDataUri = 'data:image/png;base64,' . base64_encode($qrCodeData);
+        $qrCodeDataUri = 'data:image/png;base64,' . base64_encode($qrCode);
 
         return response()->json([
             'message' => 'QR token generated successfully',
@@ -78,34 +84,38 @@ class AdminAuthController extends Controller
         ]);
     }
 
-    // Handle login via QR code
-    public function qrLogin(Request $request)
-    {
-        // Look for the user based on the QR token passed in the URL
-        $user = User::where('login_token', $request->token)->first();
+   
 
-        if (!$user) {
-            return response()->json(['message' => 'Invalid or expired QR token.'], 400);
-        }
 
-        // Check if the token has expired (for example, after 5 minutes)
-        if (Carbon::parse($user->login_token_created_at)->addMinutes(5)->isPast()) {
-            return response()->json(['message' => 'QR token has expired. Please generate a new one.'], 400);
-        }
 
-        // Log the user in (this assumes you are using Laravel's default authentication)
-        auth()->login($user);
 
-        // Invalidate the token after use
-        $user->update(['login_token' => null]);
 
-        // Generate an API token for the session
-        $token = $user->createToken('admin-token')->plainTextToken;
 
-        return response()->json([
-            'message' => 'QR login successful',
-            'token' => $token,
-            'user' => $user,
-        ]);
+   public function qrLogin($token)
+{
+    $user = User::where('login_token', $token)->first();
+
+    if (!$user) {
+        return response()->json(['message' => 'Invalid QR token. Please generate a new one.'], 400);
     }
+
+    
+
+    // Log the user in
+    auth()->login($user);
+
+
+
+    // Create a new API token
+    $token = $user->createToken('admin-token')->plainTextToken;
+
+    return response()->json([
+        'message' => 'QR login successful',
+        'token' => $token,
+        'user' => $user,
+    ]);
+}
+
+
+
 }
