@@ -18,11 +18,23 @@ use Illuminate\Support\Carbon;
 use App\Mail\StudentResetPasswordMail;
 use App\Exports\StudentsExport;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\StudentsImport;
 
 
 
 class StudentAuthController extends Controller
 {
+
+    public function import(Request $request)
+{
+    $request->validate([
+        'file' => 'required|mimes:xlsx,csv,txt|max:2048',
+    ]);
+
+    Excel::import(new StudentsImport, $request->file('file'));
+
+    return response()->json(['message' => 'Students imported successfully!']);
+}
 
 
 public function export()

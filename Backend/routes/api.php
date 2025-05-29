@@ -54,6 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Student Profile Route
 Route::prefix('student')->group(function () {
+Route::post('/import', [StudentAuthController::class, 'import']);
 Route::get('/export', [StudentAuthController::class, 'export']);
 Route::get('/profile/{id}', [StudentAuthController::class, 'profile']);
 Route::post('/update/{id}', [StudentAuthController::class, 'update']);
