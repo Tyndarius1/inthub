@@ -47,12 +47,10 @@ $validator = Validator::make($request->all(), [
 'industry' => 'required|string',
 'description' => 'required|string',
 'website' => 'nullable|url',
-'phone' => ['required', 'regex:/^(09|\+639)\d{9}$/'],
+'phone' => ['required', 'regex:/^(09|\+639)\d{9}$/'], 
 'location' => 'required|string',
 'contact_person' => 'required|string',
 'company_pic' => 'nullable|image|mimes:jpg,jpeg,png,svg|max:2048',
-], [
-'phone.regex' => 'The phone number must be a valid Philippine mobile number (e.g., 09171234567 or +639171234567).',
 ]);
 
 if ($validator->fails()) {
@@ -63,6 +61,14 @@ $imgPath = null;
 if ($request->hasFile('company_pic')) {
 $imgPath = $request->file('company_pic')->store('employer_pic', 'public');
 }
+
+// Format phone number to E.164 standard (+63...)
+$phone = $request->phone;
+if (preg_match('/^0/', $phone)) {
+$phone = preg_replace('/^0/', '+63', $phone);
+}
+
+
 
 $otp = random_int(100000, 999999);
 $otpExpiresAt = now()->addMinutes(10);

@@ -19,6 +19,7 @@ use App\Mail\StudentResetPasswordMail;
 use App\Exports\StudentsExport;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\StudentsImport;
+use Twilio\Rest\Client;
 
 
 
@@ -118,6 +119,8 @@ $student = Student::create([
 ]);
 
 Mail::to($student->email)->send(new OtpMail($otp));
+
+
 
 $student->student_pic = $student->student_pic ? asset('storage/' . $student->student_pic) : null;
 
